@@ -4,11 +4,10 @@
 int main(int argc, char const *argv[]) {
 	Process *firstProcess;
 	firstProcess = malloc(sizeof(Process));
+	Thread *nextThread;
 	Process *head;
-	Queue *readyQueue;
-	readyQueue = malloc(sizeof(readyQueue));
 	int numProcesses = 0, switchThread = 0, switchProcess = 0, clockTime = 0;
-	int idleTime = 0;
+	int idleTime = 0, nextThreadParent = 0, currentProcess = 0, firstEvent = 1;
 
 	//get starting line of info
 	fscanf(stdin,"%d %d %d", &numProcesses, &switchThread, &switchProcess);
@@ -26,13 +25,44 @@ int main(int argc, char const *argv[]) {
 			head = head->next;
 		head->next = nextProcess;
 	}
-	//create a queue of processes that are ready
-	createReadyQueue(firstProcess,readyQueue);
-	head = firstProcess->next;
-	for (int i = 1; i < numProcesses; i++) {
-		createReadyQueue(head,readyQueue,clockTime);
+	//find earliest arrival time that isnt doing IO and isnt finished
+	//policy on same arrival time is to take one in earliest process
+	head = firstProcess;
+	while (head != NULL) {
+		for (int j = 0; j < head->numThreads; j++) {
+			if (head->threads[i].arrivalTime <= clockTime && head->threads[i].IO_timeRemaining <= 0) {
+				if (head->threads[i].finishTime != 0) {
+					if (nextThread == NULL) {
+						nextThread = head->threads[i];
+						nextThreadParent = head->processNum;
+					}
+					else if (nextThread.arrivalTime > head->threads[i].arrivalTime) {
+						nextThread = head->threads[i];
+						nextThreadParent = head->processNum;
+					}
+				}
+			}
+		}
 		head = head->next;
 	}
+	//nextThread now points to the thread that is ready and has the lowest arrival time
+	//check if thread is within process or in another one
+	if (firstEvent) {
+		currentProcess = nextThreadParent;
+		firstEvent = 0;
+	}
+	else {
+		if (currentProcess == nextThreadParent)
+			clockTime += switchThread;
+		else
+			clockTime += switchProcess;
+	}
+	//add processing time to timeClock
+	timeClock += nextThread.initBurst->CPU;
+	nextThread.IO_timeRemaining = nextThread.initBurst->IO;
+	//if the process is done, record finish time
+	if (nextThread.initBurst->IO == 0)
+		nextThread.finishTime = timeClock;
 	return 0;
 }
 
@@ -70,30 +100,4 @@ void getThreads(Process *process, int numThreads) {
 		head->next = finalBurst;
 	}
 	return;
-}
-
-void createReadyQueue(Process *process, Queue *readyQueue, int clockTime) {
-	Queue *head;
-	for (int i = 0; i < process->numThreads; i++) {
-		//check if thread has arrived yet and that it isnt finished
-		if (process->threads[i].arrivalTime <= clockTime && process->threads[i].finishTime == 0) {
-			//check if thread is doing IO
-			if (process->threads[i].IO_timeRemaining <= 0) {
-				//thread has arrived and is not doing IO, so its ready
-				if (readyQueue->readyThread == NULL) {
-					readyQueue->readyThread = process->threads[i];
-				}
-				else {
-					//create new queue node
-					Queue queueNode;
-					queueNode = malloc(sizeof(Queue));
-					queueNode->readyThread = process->threads[i];
-					head = readyQueue->next;
-					while(head->next != NULL)
-						head = head->next;
-					head->next = queueNode;
-				}
-			}
-		}
-	}
 }

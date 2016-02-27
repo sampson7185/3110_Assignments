@@ -35,12 +35,6 @@ typedef struct {
 	void *next;
 } Process;
 
-typedef struct {
-	Thread *readyThread;
-	void *next;
-}Queue;
-
 void getThreads(Process *process, int numThreads);
-void createReadyQueue(Process *process, Queue *readyQueue, int clockTime);
 
 #endif
