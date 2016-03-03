@@ -36,5 +36,6 @@ typedef struct {
 } Process;
 
 void getThreads(Process *process, int numThreads);
+int checkFinished(Process *process);
 
 #endif

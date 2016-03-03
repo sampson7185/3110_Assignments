@@ -3,12 +3,14 @@
 
 int main(int argc, char const *argv[]) {
 	Process *firstProcess;
-	firstProcess = malloc(sizeof(Process));
 	Thread *nextThread;
 	Process *head;
+	BurstTimes *temp;
 	int numProcesses = 0, switchThread = 0, switchProcess = 0, clockTime = 0;
 	int idleTime = 0, nextThreadParent = 0, currentProcess = 0, firstEvent = 1;
+	int notFinished = 1;
 
+	firstProcess = malloc(sizeof(Process));
 	//get starting line of info
 	fscanf(stdin,"%d %d %d", &numProcesses, &switchThread, &switchProcess);
 	fscanf(stdin,"%d %d", &firstProcess->processNum, &firstProcess->numThreads);
@@ -19,50 +21,65 @@ int main(int argc, char const *argv[]) {
 		fscanf(stdin,"%d %d", &nextProcess->processNum, &nextProcess->numThreads);
 		getThreads(nextProcess, nextProcess->numThreads);
 		//add process to linked list
-		Process *head;
 		head = firstProcess;
 		while (head->next != NULL)
 			head = head->next;
 		head->next = nextProcess;
 	}
-	//find earliest arrival time that isnt doing IO and isnt finished
-	//policy on same arrival time is to take one in earliest process
-	head = firstProcess;
-	while (head != NULL) {
-		for (int j = 0; j < head->numThreads; j++) {
-			if (head->threads[i].arrivalTime <= clockTime && head->threads[i].IO_timeRemaining <= 0) {
-				if (head->threads[i].finishTime != 0) {
-					if (nextThread == NULL) {
-						nextThread = head->threads[i];
-						nextThreadParent = head->processNum;
-					}
-					else if (nextThread.arrivalTime > head->threads[i].arrivalTime) {
-						nextThread = head->threads[i];
-						nextThreadParent = head->processNum;
+	//this loop runs until all threads in all processes are finished
+	while (notFinished) {
+		head = firstProcess;
+
+		//find earliest arrival time that isnt doing IO and isnt finished
+		//policy on same arrival time is to take one in earliest process
+		while (head != NULL) {
+			for (int j = 0; j < head->numThreads; j++) {
+				if (head->threads[i].arrivalTime <= clockTime && head->threads[i].IO_timeRemaining <= 0) {
+					if (head->threads[i].finishTime != 0) {
+						if (nextThread == NULL) {
+							nextThread = head->threads[i];
+							nextThreadParent = head->processNum;
+						}
+						else if (nextThread.arrivalTime > head->threads[i].arrivalTime) {
+							nextThread = head->threads[i];
+							nextThreadParent = head->processNum;
+						}
 					}
 				}
 			}
+			head = head->next;
 		}
-		head = head->next;
+		//nextThread now points to the thread that is ready and has the lowest arrival time
+		//check if thread is within process or in another one
+		if (firstEvent) {
+			currentProcess = nextThreadParent;
+			firstEvent = 0;
+		}
+		else {
+			if (currentProcess == nextThreadParent)
+				clockTime += switchThread;
+			else
+				clockTime += switchProcess;
+		}
+		//add processing time to timeClock
+		timeClock += nextThread.initBurst->CPU;
+		nextThread.IO_timeRemaining = nextThread.initBurst->IO;
+		//if the process is done, record finish time
+		if (nextThread.initBurst->IO == 0)
+			nextThread.finishTime = timeClock;
+		//move initburst to next burst
+		if (nextThread.initBurst->next != NULL) {
+			temp = nextThread.initBurst->next;
+			free(nextThread.initBurst);
+			nextThread.initBurst = temp;
+		}
+		//check finished
+		head = firstProcess;
+		while (head != NULL) {
+			notFinished = checkFinished(head);
+			head = head->next;
+		}
 	}
-	//nextThread now points to the thread that is ready and has the lowest arrival time
-	//check if thread is within process or in another one
-	if (firstEvent) {
-		currentProcess = nextThreadParent;
-		firstEvent = 0;
-	}
-	else {
-		if (currentProcess == nextThreadParent)
-			clockTime += switchThread;
-		else
-			clockTime += switchProcess;
-	}
-	//add processing time to timeClock
-	timeClock += nextThread.initBurst->CPU;
-	nextThread.IO_timeRemaining = nextThread.initBurst->IO;
-	//if the process is done, record finish time
-	if (nextThread.initBurst->IO == 0)
-		nextThread.finishTime = timeClock;
 	return 0;
 }
 
@@ -93,6 +110,7 @@ void getThreads(Process *process, int numThreads) {
 		BurstTimes *finalBurst;
 		finalBurst = malloc(sizeof(BurstTimes));
 		fscanf(stdin,"%d %d", &finalBurst->burstNum, &finalBurst->CPU);
+		finalBurst->IO = 0;
 		BurstTimes *head;
 		head = firstBurst;
 		while (head->next != NULL)
@@ -100,4 +118,10 @@ void getThreads(Process *process, int numThreads) {
 		head->next = finalBurst;
 	}
 	return;
+}
+
+int checkFinished(Process *process) {
+	for (int i = 0; i < process->numThreads; i++) {
+		if (process->threads[i].finishTime)
+	}
 }
