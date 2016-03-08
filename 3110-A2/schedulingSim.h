@@ -10,7 +10,7 @@ Matt Sampson, 0888047
 
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <string.h>
 
 typedef struct BurstTimes{
 	int CPU;
@@ -26,6 +26,10 @@ typedef struct {
 	int finishTime;
 	int threadx;
 	int bursts;
+	int parentProcess;
+	int turnaroundTime;
+	int serviceTime;
+	int IOtime;
 } Thread;
 
 typedef struct {
@@ -35,7 +39,16 @@ typedef struct {
 	void *next;
 } Process;
 
-void getThreads(Process *process, int numThreads);
+typedef struct Queue{
+	Thread *current;
+	void *next;
+}Queue;
+
+void getThreads(Process *process, int numThreads, int parent);
 int checkFinished(Process *process);
+void simFCFS(Queue *readyQueue, int *firstEvent, int *currentProcess, int *clockTime, int switchProcess, int switchThread);
+void simRR();
+void printBasic(Process *firstProcess,int rrScheduling,int timeQuantum,int clockTime,int switchTime);
+void printDetailed(Process *firstProcess);
 
 #endif
