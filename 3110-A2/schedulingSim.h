@@ -45,7 +45,7 @@ typedef struct Queue{
 }Queue;
 
 void getThreads(Process *process, int numThreads, int parent);
-int checkFinished(Process *process);
+int checkFinished(Process *process, int oldClockTime);
 void simFCFS(Queue *readyQueue, int *firstEvent, int *currentProcess, int *clockTime, int switchProcess, int switchThread);
 void simRR();
 void printBasic(Process *firstProcess,int rrScheduling,int timeQuantum,int clockTime,int switchTime);

@@ -1,6 +1,5 @@
 #include "schedulingSim.h"
 
-
 int main(int argc, char const *argv[]) {
     Process *firstProcess;
     Process *head;
@@ -47,6 +46,7 @@ int main(int argc, char const *argv[]) {
     }
     //this loop runs until all threads in all processes are finished
     while (notFinished) {
+        
         //go through threads and find arrival times that are lower
         //than clock time and add to queue, once queue is full, empty
         //queue and add cpu times to clock, refill queue with threads
@@ -78,15 +78,18 @@ int main(int argc, char const *argv[]) {
             }
             head = head->next;
         }
+
+        //simulate chosen scheduling method
         if (rrScheduling == 0)
             simFCFS(readyQueue,&firstEvent,&currentProcess,&clockTime,switchProcess,switchThread);
         else if (rrScheduling == 1)
             //sim round robin
+        
         //check finished
         head = firstProcess;
         i = 0;
         while (head != NULL) {
-            processesFinished[i] = checkFinished(head);
+            processesFinished[i] = checkFinished(head, clockTime);
             i++;
             head = head->next;
         }
@@ -106,7 +109,7 @@ int main(int argc, char const *argv[]) {
         printBasic(rrScheduling,timeQuantum,clockTime,switchTime);
     else if (dFlag == 1 || vFlag == 1) {
         printBasic(rrScheduling,timeQuantum,clockTime,switchTime);
-        printDetailed();
+        printDetailed(firstProcess);
     }
 
     return 0;
@@ -150,7 +153,10 @@ void getThreads(Process *process, int numThreads, int parent) {
     return;
 }
 
-int checkFinished(Process *process) {
+int checkFinished(Process *process, int newClockTime) {
+    //this function also subtracts IO time from processes if needed
+    static int oldClockTime = 0;
+    int timeDifference = 0;
     //create array of size process->numThreads - 1, this will keep track of which 
     //threads are done
     int threadDone[process->numThreads-1];
@@ -162,6 +168,12 @@ int checkFinished(Process *process) {
     for (int i = 0; i < process->numThreads; i++) {
         if (process->threads[i].finishTime != 0)
             threadDone[i] = 1;
+        if (oldClockTime != newClockTime) {
+            //subtract difference if thread is in IO
+            timeDifference = newClockTime - oldClockTime;
+            process->threads[i].IO_timeRemaining -= timeDifference;
+            oldClockTime = newClockTime;
+        }
     }
     //go through threadDone array and if all threads done return 1
     //else return zero to signal not done
