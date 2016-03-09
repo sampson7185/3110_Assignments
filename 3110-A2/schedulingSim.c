@@ -8,7 +8,8 @@ int main(int argc, char const *argv[]) {
     Queue *Qhead;
     int numProcesses = 0, switchThread = 0, switchProcess = 0, clockTime = 0;
     int currentProcess = 0, firstEvent = 1, i = 0, dFlag = 0, vFlag = 0;
-    int notFinished = 1, rrScheduling = 0, timeQuantum = 0;
+    int notFinished = 1, rrScheduling = 0, timeQuantum = 0, switchTime = 0;
+    int deadlockCheck = 0;
 
     //find out which flags were entered
     for (int i = 1; i < argc; i++) {
@@ -46,7 +47,9 @@ int main(int argc, char const *argv[]) {
     }
     //this loop runs until all threads in all processes are finished
     while (notFinished) {
-        
+        //record time before going through to make sure it doesn't get stuck 
+        //waiting for processes to finish
+        deadlockCheck = clockTime;
         //go through threads and find arrival times that are lower
         //than clock time and add to queue, once queue is full, empty
         //queue and add cpu times to clock, refill queue with threads
@@ -81,10 +84,10 @@ int main(int argc, char const *argv[]) {
 
         //simulate chosen scheduling method
         if (rrScheduling == 0)
-            simFCFS(readyQueue,&firstEvent,&currentProcess,&clockTime,switchProcess,switchThread);
+            simFCFS(readyQueue,&firstEvent,&currentProcess,&clockTime,switchProcess,switchThread,&switchTime);
         else if (rrScheduling == 1)
-            //sim round robin
-        
+            simRR(readyQueue,&firstEvent,&currentProcess,&clockTime,switchProcess,switchThread,timeQuantum,&switchTime);
+            
         //check finished
         head = firstProcess;
         i = 0;
@@ -101,6 +104,10 @@ int main(int argc, char const *argv[]) {
             else if (processesFinished[i] == 1) {
                 notFinished = 0;
             }
+        }
+        if (deadlockCheck == clockTime) {
+            //advance 1 time unit
+            clockTime++;
         }
         readyQueue = NULL;
     }
@@ -184,40 +191,50 @@ int checkFinished(Process *process, int newClockTime) {
     return 1;
 }
 
-void simFCFS(Queue *readyQueue, int *firstEvent, int *currentProcess, int *clockTime, int switchProcess, int switchThread) {
+void simFCFS(Queue *readyQueue, int *firstEvent, int *currentProcess, int *clockTime, 
+    int switchProcess, int switchThread, int *switchTime) {
     BurstTimes *temp;
     Queue *Qhead;
 
     //use a while loop to go through each thread in the queue
     while(readyQueue != NULL) {
+
         //The ready queue should now be full, empty queue and simulate time
         if (firstEvent) {
             currentProcess = &readyQueue->current->parentProcess;
             firstEvent = 0;
         }
         else {
-            if (currentProcess == &readyQueue->current->parentProcess)
+            if (currentProcess == &readyQueue->current->parentProcess) {
                 *clockTime += switchThread;
-            else
+                *switchTime += switchThread;
+            }
+            else {
                 *clockTime += switchProcess;
+                *switchTime += switchProcess;
+            }
         }
+
         //add processing time to clockTime
         *clockTime += readyQueue->current->initBurst->CPU;
         readyQueue->current->serviceTime += readyQueue->current->initBurst->CPU;
         readyQueue->current->IO_timeRemaining = readyQueue->current->initBurst->IO;
         readyQueue->current->IOtime += readyQueue->current->initBurst->IO;
+
         //if the process is done, record finish time and calculate turnaround time
         if (readyQueue->current->initBurst->IO == 0) {
             readyQueue->current->finishTime = *clockTime;
             readyQueue->current->turnaroundTime = readyQueue->current->finishTime - 
                 readyQueue->current->arrivalTime;
         }
+
         //move initburst to next burst
         if (readyQueue->current->initBurst->next != NULL) {
             temp = readyQueue->current->initBurst->next;
             free(readyQueue->current->initBurst);
             readyQueue->current->initBurst = temp;
         }
+
         //move queue to next thread
         if (readyQueue != NULL) {
             Qhead = readyQueue->next;
@@ -228,8 +245,75 @@ void simFCFS(Queue *readyQueue, int *firstEvent, int *currentProcess, int *clock
     return;
 }
 
-void simRR() {
+void simRR(Queue *readyQueue, int *firstEvent, int *currentProcess, 
+    int *clockTime, int switchProcess, int switchThread, int timeQuantum, int *switchTime) {
     
+    BurstTimes *temp;
+    Queue *Qhead;
+    int unusedQuantum = 0;
+    int finishedCPU = 1;
+
+    //use a while loop to go through each thread in the queue
+    while(readyQueue != NULL) {
+        finishedCPU = 1;
+
+        //The ready queue should now be full, empty queue and simulate time
+        if (firstEvent) {
+            currentProcess = &readyQueue->current->parentProcess;
+            firstEvent = 0;
+        }
+        else {
+            if (currentProcess == &readyQueue->current->parentProcess) {
+                *clockTime += switchThread;
+                *switchTime += switchThread;
+            }
+            else {
+                *clockTime += switchProcess;
+                *switchTime += switchProcess;
+            }
+        }
+
+        //add processing time to clockTime, if the process can be finished add remaining time 
+        //and move to next burst, if not subtract time quantum from CPU time and move to next
+        //thread in the queue
+        if (readyQueue->current->initBurst->CPU > timeQuantum) {
+            //subtract timeQuantum from CPU time and move to next thread
+            readyQueue->current->initBurst->CPU -= timeQuantum;
+            *clockTime += timeQuantum;
+            readyQueue->current->serviceTime += timeQuantum;
+            finishedCPU = 0;
+        }
+        else {
+            //calculate unused quantum and add the used quantum to the clock
+            unusedQuantum = timeQuantum - readyQueue->current->initBurst->CPU;
+            *clockTime += timeQuantum - unusedQuantum;
+            readyQueue->current->serviceTime += timeQuantum - unusedQuantum;
+            readyQueue->current->IO_timeRemaining = readyQueue->current->initBurst->IO;
+            readyQueue->current->IOtime += readyQueue->current->initBurst->IO;
+        }
+
+        //if the process is done, record finish time and calculate turnaround time
+        if (readyQueue->current->initBurst->IO == 0) {
+            readyQueue->current->finishTime = *clockTime;
+            readyQueue->current->turnaroundTime = readyQueue->current->finishTime - 
+                readyQueue->current->arrivalTime;
+        }
+
+        //move initburst to next burst
+        if (readyQueue->current->initBurst->next != NULL && finishedCPU) {
+            temp = readyQueue->current->initBurst->next;
+            free(readyQueue->current->initBurst);
+            readyQueue->current->initBurst = temp;
+        }
+
+        //move queue to next thread
+        if (readyQueue != NULL) {
+            Qhead = readyQueue->next;
+            free(readyQueue);
+            readyQueue = Qhead;
+        }
+    }
+    return;
 }
 
 void printBasic(Process *firstProcess,int rrScheduling,int timeQuantum,int clockTime,int switchTime) {
