@@ -30,6 +30,7 @@ typedef struct {
 	int turnaroundTime;
 	int serviceTime;
 	int IOtime;
+	int newToReady;
 } Thread;
 
 typedef struct {
@@ -39,17 +40,17 @@ typedef struct {
 	void *next;
 } Process;
 
-typedef struct Queue{
+typedef struct {
 	Thread *current;
 	void *next;
 }Queue;
 
 void getThreads(Process *process, int numThreads, int parent);
-int checkFinished(Process *process, int oldClockTime);
+int checkFinished(Process *process, int newClockTime,  int oldClockTime);
 void simFCFS(Queue *readyQueue, int *firstEvent, int *currentProcess, int *clockTime, 
-	int switchProcess, int switchThread, int *switchTime);
+	int switchProcess, int switchThread, int *switchTime, int vFlag);
 void simRR(Queue *readyQueue, int *firstEvent, int *currentProcess, int *clockTime, 
-	int switchProcess, int switchThread, int timeQuantum, int *switchTime);
+	int switchProcess, int switchThread, int timeQuantum, int *switchTime, int vFlag);
 void printBasic(Process *firstProcess,int rrScheduling,int timeQuantum,int clockTime,int switchTime);
 void printDetailed(Process *firstProcess);
 
