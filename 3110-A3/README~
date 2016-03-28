@@ -1,0 +1,7 @@
+CIS3110 Assignment 3
+
+Author: Matt Sampson (0888047)
+
+References: N/A
+
+The holes program works to the fullest extent I could make it. I believe that all the algorithms are working as they all can complete and output but they may not be working totally right. The Dining Philosophers program does not work at all. I was unable to find a consistent example of using semaphores that worked, it seemed that every website and the textbook had different ways of creating a using semaphores. It does however take in the input and makes sure the user inputs the right info for the program to run. Each program has a makefile that can make each program as well as a make clean option. 
