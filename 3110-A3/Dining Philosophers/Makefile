@@ -1,13 +1,13 @@
 CC = gcc
 CFLAGS = -Wall -pedantic -std=c99 -g -c
 
-all: diningPhilosophers
+all: dine
 
-diningPhilosophers: diningPhilosophers.o
-	$(CC) -pthread diningPhilosophers.o -o dine
+dine: dine.o
+	$(CC) -pthread dine.o -o dine
 
-diningPhilosophers.o: diningPhilosophers.c
-	$(CC) $(CFLAGS) diningPhilosophers.c
+dine.o: dine.c
+	$(CC) $(CFLAGS) dine.c
 
 clean:
 	rm *o dine
