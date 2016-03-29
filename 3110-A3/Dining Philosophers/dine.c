@@ -20,9 +20,9 @@ void *simPhil(void *arg) {
 	pthread_mutex_t lock[numberPhil];
 	int leftChopstick = 0, rightChopstick = 0;
 
-	leftChopstick = threadID;
-	rightChopstick = threadID + 1;
-	if (threadID == numberPhil)
+	leftChopstick = threadID - 1;
+	rightChopstick = threadID;
+	if (threadID == numberPhil + 1)
 		rightChopstick = 0;
 	//create number of mutexes = to number of philosophers
 	for (i = 0; i < numberPhil; i++) {
@@ -66,7 +66,7 @@ int main(int argc, char const *argv[])
 	//to prevent deadlock
 	while (i <= numberPhil - 1) {
 		test[i - 1] = i;
-		err = pthread_create(&(tid[i]), NULL, &simPhil, &test[i]);
+		err = pthread_create(&(tid[i]), NULL, &simPhil, &test[i - 1]);
 		if (err != 0)
 			printf("Can't create thread: [%s]\n", strerror(err));
 		i++;
@@ -75,6 +75,13 @@ int main(int argc, char const *argv[])
 	while(i < numberPhil - 1) {
 		pthread_join(tid[i], NULL);
 		i++;
+	}
+	i = 0;
+	//this is the final philosopher eating
+	while (i < numberEat) {
+		printf("Philosopher %d is eating.\n", threadID);
+		sleep(1);
+		rintf("Philosopher %d is thinking.\n", threadID);
 	}
 	return 0;
 }
